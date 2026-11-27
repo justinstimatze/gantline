@@ -1,0 +1,9 @@
+# Local working notes and tool state
+HANDOFF.md
+.plancheck-debug.json
+
+# Build output
+/gantline
+/chunkprobe
+*.test
+*.out
