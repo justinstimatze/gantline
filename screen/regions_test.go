@@ -264,6 +264,11 @@ func TestOverflowedBox(t *testing.T) {
 	if _, found := Input(dialog); found {
 		t.Fatal("a dialog read as an overflowed box")
 	}
+	// A permission dialog whose last option names shift+tab.
+	perm := "  some wrapped output line\n" + strings.Repeat("─", 56) + "\n  Do you want to make this edit?\n  ❯ 1. Yes\n    2. Yes, allow all edits during this session (shift+tab)\n"
+	if _, found := Input(perm); found {
+		t.Fatal("a permission dialog naming shift+tab read as an overflowed box")
+	}
 	// Conversation output starts at column 0 ("⏺ ..."), so a screen whose
 	// box is simply missing never reads as an overflowed one.
 	if _, found := Input("⏺ done\n  more\n" + strings.Repeat("─", 56) + "\n  ⏵⏵ auto mode on (shift+tab to cycle)\n"); found {

@@ -166,7 +166,11 @@ func overflowBox(lines []string) (Span, bool) {
 			last = t
 		}
 	}
-	if !strings.Contains(last, "shift+tab") && !strings.Contains(last, "? for shortcuts") {
+	// The mode line's own hint, the only form in the local captures, not a
+	// bare "shift+tab": a permission dialog's option reads "allow all edits
+	// (shift+tab)". A mode line without the hint finds no box, so gantline
+	// waits instead of typing.
+	if !strings.Contains(last, "(shift+tab to cycle)") {
 		return Span{}, false
 	}
 	return Span{0, rule}, true
