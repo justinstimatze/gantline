@@ -1,0 +1,33 @@
+name: macOS
+
+# The unit tests on macOS, against the fake Claude Code screen, only when code that could behave differently
+# there changes. Run it by hand from the Actions tab otherwise.
+on:
+  push:
+    branches: [main]
+    paths: ['**.go', 'go.mod', 'go.sum', 'say/testdata/**', '.github/workflows/macos.yml']
+  pull_request:
+    branches: [main]
+    paths: ['**.go', 'go.mod', 'go.sum', 'say/testdata/**', '.github/workflows/macos.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.x'
+      # macOS ships bash 3.2; the fake Claude Code screen needs a current one.
+      - run: brew install tmux jq bash
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...

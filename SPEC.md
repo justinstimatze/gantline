@@ -34,7 +34,8 @@ These are the rules gantline's code keeps, each with the tests that fail when it
 | `screen` | Cutting a capture into regions (box, mode line, dialog, last output) and the fingerprint table |
 | `say` | Typing into a pane: chunked keys, bracketed paste, echo checks, Enter |
 | `queue` | The per-pane queue, its runner and outcome checks |
-| `relaunch` | Reading a session's command line from `/proc` and rewriting it to resume on another model |
+| `internal/proc` | Another process's argv, environment, working directory and children, through gopsutil |
+| `relaunch` | Reading a session's command line and rewriting it to resume on another model |
 | `tmux` | The tmux calls |
 | `internal/audit` | The delivery log and `gantline audit` |
 | `cmd/chunkprobe` | A developer probe, not installed with gantline, that measures how large a `send-keys` argument Claude Code takes intact. Rerun it on a new Claude Code version |
