@@ -60,7 +60,7 @@ func Find(panePID int) (Session, error) {
 }
 
 func findClaude(tree proc.Tree, pid int) (int, error) {
-	if proc.Name(pid) == "claude" {
+	if isClaude(pid) {
 		return pid, nil
 	}
 	var found []int
@@ -70,7 +70,7 @@ func findClaude(tree proc.Tree, pid int) (int, error) {
 			return
 		}
 		for _, c := range tree[p] {
-			if proc.Name(c) == "claude" {
+			if isClaude(c) {
 				found = append(found, c)
 				continue
 			}
@@ -85,4 +85,13 @@ func findClaude(tree proc.Tree, pid int) (int, error) {
 		return found[0], nil
 	}
 	return 0, fmt.Errorf("%w: %d claude processes under pid %d", ErrNoClaude, len(found), pid)
+}
+
+// isClaude matches the native binary by name: "claude" from the native
+// installer, "claude.exe" from npm, whose bin entry is bin/claude.exe on
+// every platform. On a macOS runner with the npm install, matching only
+// "claude" found no process.
+func isClaude(pid int) bool {
+	n := proc.Name(pid)
+	return n == "claude" || n == "claude.exe"
 }

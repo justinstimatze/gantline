@@ -49,7 +49,7 @@ var scenarios = []scenario{
 		name:  "clear",
 		steps: []string{"Run `gantline q --then '" + next + "' /clear`. Then end your turn by replying only: ok", finish},
 		drive: func(t *testing.T, x *sess) {
-			x.waitFile(t, "done.txt", 6*time.Minute)
+			x.waitFile(t, "done.txt", 4*time.Minute)
 			it := x.onlyItem(t)
 			if !strings.HasPrefix(it.Cmd, "/clear") || it.State != queue.Done || it.ThenState != queue.Done {
 				t.Errorf("item %+v", it)
@@ -68,7 +68,7 @@ var scenarios = []scenario{
 		name:  "restart",
 		steps: []string{"Run `gantline restart --then '" + next + "'`. Then end your turn by replying only: ok", finish},
 		drive: func(t *testing.T, x *sess) {
-			x.waitFile(t, "done.txt", 6*time.Minute)
+			x.waitFile(t, "done.txt", 4*time.Minute)
 			it := x.onlyItem(t)
 			if !strings.Contains(it.Model, "haiku") || it.State != queue.Done || it.ThenState != queue.Done {
 				t.Errorf("item %+v, want a done relaunch on the same haiku model", it)

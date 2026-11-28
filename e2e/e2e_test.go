@@ -175,7 +175,7 @@ func selfControl(t *testing.T, bin string) {
 	sayFirst(t, bin, s.Socket, prompt)
 
 	done := filepath.Join(project, "done.txt")
-	deadline := time.Now().Add(15 * time.Minute)
+	deadline := time.Now().Add(6 * time.Minute)
 	for {
 		if _, err := os.Stat(done); err == nil {
 			break
@@ -183,7 +183,7 @@ func selfControl(t *testing.T, bin string) {
 		if time.Now().After(deadline) {
 			items, _ := queue.Items(key)
 			c, _ := s.Capture("%0")
-			t.Fatalf("no done.txt after 15m; queue %+v\nscreen:\n%s", items, c)
+			t.Fatalf("no done.txt after 6m; queue %+v\nscreen:\n%s", items, c)
 		}
 		time.Sleep(5 * time.Second)
 	}

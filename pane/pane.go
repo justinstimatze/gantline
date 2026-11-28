@@ -96,7 +96,7 @@ func isClaude(pid int) bool {
 		return false
 	}
 	for _, a := range argv {
-		if a == "claude" || strings.HasSuffix(a, "/claude") {
+		if a == "claude" || strings.HasSuffix(a, "/claude") || strings.HasSuffix(a, "/claude.exe") {
 			return true
 		}
 	}
