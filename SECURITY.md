@@ -4,4 +4,4 @@ gantline lets a model press keys in its own terminal, and the README's warning d
 
 Report it privately through GitHub's [Report a vulnerability](https://github.com/justinstimatze/gantline/security/advisories/new) form, or by email to justin@justinstimatze.com. Please don't open a public issue or pull request. I'll acknowledge the report within 7 days and send an initial assessment within 30. Disclosure defaults to 90 days after the report, and we can agree on a different timeline.
 
-Only the latest commit on `main` is supported. There are no release branches, so fixes land there.
+Only the latest commit on `main` gets fixes. There are no release branches.
