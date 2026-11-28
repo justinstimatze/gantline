@@ -280,9 +280,15 @@ func acceptTrust(s tmux.Server) error {
 		c, _ := s.Capture("%0")
 		l := screen.Cut(c)
 		if screen.Dialog(l) == "trust_folder" {
-			s.Run("send-keys", "-t", "%0", "Down")
+			// The cursor starts on "No, exit". Press Enter only once the
+			// screen shows it on "Yes": a Down sent while the dialog is
+			// still drawing is dropped, and Enter would then exit.
+			if trustYesSelected(c) {
+				s.Run("send-keys", "-t", "%0", "Enter")
+			} else {
+				s.Run("send-keys", "-t", "%0", "Down")
+			}
 			time.Sleep(300 * time.Millisecond)
-			s.Run("send-keys", "-t", "%0", "Enter")
 			continue
 		}
 		if in, ok := screen.Input(c); ok && in == "" && !screen.Busy(c) {
@@ -304,6 +310,16 @@ func acceptTrust(s tmux.Server) error {
 	}
 	tree, err := exec.Command("pstree", "-pal", pid).CombinedOutput()
 	return fmt.Errorf("%w:\n%s\npane: %s\nprocesses (%v):\n%s", errStall, c, strings.TrimSpace(st), err, tree)
+}
+
+// trustYesSelected reports whether the trust dialog's cursor is on "Yes".
+func trustYesSelected(capture string) bool {
+	for _, line := range strings.Split(capture, "\n") {
+		if strings.Contains(line, "Yes, I trust this folder") {
+			return strings.Contains(line, "❯")
+		}
+	}
+	return false
 }
 
 // checkRun asserts the outcome from the queue, the journal and the files
