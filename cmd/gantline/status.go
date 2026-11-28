@@ -100,7 +100,11 @@ func buildReport(s tmux.Server, id, key string, now time.Time, raw bool) (report
 	if items, err := queue.Items(key); err == nil {
 		for _, it := range items {
 			if !it.Reported || !queue.Final(it.State) {
-				r.Queue = append(r.Queue, fmt.Sprintf("%s %s %s", it.ID, trunc(it.Cmd, 30), it.State))
+				line := fmt.Sprintf("%s %s %s", it.ID, trunc(it.Cmd, 30), it.State)
+				if it.State == queue.Running && it.Detail != "" {
+					line += " (" + trunc(it.Detail, 80) + ")"
+				}
+				r.Queue = append(r.Queue, line)
 			}
 		}
 		if len(r.Queue) > 3 {

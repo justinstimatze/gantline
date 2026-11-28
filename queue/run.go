@@ -256,6 +256,7 @@ func (r *runner) typeWhenIdle(text string, deadline time.Time) (n int, err error
 	opt := r.o.Say
 	opt.Lock, opt.IdleOnly = r.key, true
 	drops := 0
+	waiting := "" // what the runner last said it waits on
 	for {
 		if err := r.waitIdle(deadline); err != nil {
 			return 0, err
@@ -289,6 +290,14 @@ func (r *runner) typeWhenIdle(text string, deadline time.Time) (n int, err error
 			errors.Is(err, say.ErrNoInputBox), errors.Is(err, journal.ErrLocked):
 			if time.Now().After(deadline) {
 				return n, fmt.Errorf("%w (last: %v)", errExpired, err)
+			}
+			// Say once what it waits on, in q.log and in the item's detail
+			// for `gantline status`, so a wait that lasts to the timeout
+			// isn't silent. The text of a draft is never logged.
+			if why := err.Error(); why != waiting {
+				waiting = why
+				r.o.Log("%s: waiting until %s: %s", r.cur, deadline.Format(time.TimeOnly), why)
+				Set(r.key, r.cur, Running, "waiting: "+why)
 			}
 			time.Sleep(r.o.Poll)
 		default:

@@ -230,10 +230,21 @@ func TestRunNeverClearsDraft(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	s, pane := fakePane(t, "FAKE_DRAFT=half-typed")
 	Add("k", "/context", "", 1500*time.Millisecond, true, time.Now())
-	Run(s, pane, "k", fastRun)
+	o := fastRun
+	var mu sync.Mutex
+	var logs []string
+	o.Log = func(f string, a ...any) { mu.Lock(); logs = append(logs, fmt.Sprintf(f, a...)); mu.Unlock() }
+	Run(s, pane, "k", o)
 	items, _ := Items("k")
 	if items[0].State != Expired {
 		t.Fatalf("item = %+v", items[0])
+	}
+	// The wait is said once, without the draft's text.
+	mu.Lock()
+	all := strings.Join(logs, "\n")
+	mu.Unlock()
+	if strings.Count(all, "waiting until") != 1 || !strings.Contains(all, "draft") || strings.Contains(all, "half-typed") {
+		t.Fatalf("runner log:\n%s", all)
 	}
 	if c := screenOf(s); !strings.Contains(c, "half-typed") || strings.Contains(c, "SUBMITTED") {
 		t.Fatalf("draft touched:\n%s", c)
