@@ -160,20 +160,39 @@ func overflowBox(lines []string) (Span, bool) {
 			return Span{}, false
 		}
 	}
-	last := ""
-	for _, line := range lines[rule+1:] {
-		if t := strings.TrimSpace(line); t != "" {
-			last = t
-		}
-	}
 	// The mode line's own hint, the only form in the local captures, not a
 	// bare "shift+tab": a permission dialog's option reads "allow all edits
-	// (shift+tab)". A mode line without the hint finds no box, so gantline
-	// waits instead of typing.
-	if !strings.Contains(last, "(shift+tab to cycle)") {
+	// (shift+tab)". A notice may sit under it, so any footer row counts. A
+	// mode line without the hint finds no box, so gantline waits.
+	hint := false
+	for _, line := range lines[rule+1:] {
+		hint = hint || strings.Contains(line, "(shift+tab to cycle)")
+	}
+	if !hint {
 		return Span{}, false
 	}
 	return Span{0, rule}, true
+}
+
+// modeLine is the footer row holding the mode line: the last one with a
+// mode marker, else the last row. Claude Code can draw a notice under the
+// mode line ("tmux focus-events off · add 'set -g focus-events on'…",
+// macOS runner, tmux 3.8), which reading only the last row mistook for it.
+func (l Layout) modeLine(f Span) int {
+	for i := f.End - 1; i >= f.Start; i-- {
+		if isModeLine(l.Lines[i]) {
+			return i
+		}
+	}
+	return f.End - 1
+}
+
+// isModeLine reports whether a footer row carries the mode line's markers,
+// as drawn in the local captures and the macOS runner's.
+func isModeLine(line string) bool {
+	t := strings.TrimSpace(line)
+	return strings.HasPrefix(t, "⏵⏵") || strings.HasPrefix(t, "⏸") ||
+		strings.Contains(t, "(shift+tab to cycle)") || hasSegment(t, "esc to interrupt")
 }
 
 // trim narrows s past blank lines at either end.
@@ -205,10 +224,11 @@ func (l Layout) Region(name string) (lines []string, row int, ok bool) {
 		if f.Empty() {
 			break
 		}
+		m := l.modeLine(f)
 		if name == "mode" {
-			s = Span{f.End - 1, f.End}
+			s = Span{m, m + 1}
 		} else {
-			s = Span{f.Start, f.End - 1}
+			s = Span{f.Start, m}
 		}
 	case "spinner":
 		if l.Spinner >= 0 {

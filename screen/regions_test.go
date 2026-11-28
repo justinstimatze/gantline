@@ -275,3 +275,21 @@ func TestOverflowedBox(t *testing.T) {
 		t.Fatal("conversation output read as an overflowed box")
 	}
 }
+
+// A notice under the mode line (macOS runner, tmux 3.8) doesn't hide the
+// mode line from the mode region, Busy or the overflowed-box check.
+func TestNoticeUnderModeLine(t *testing.T) {
+	notice := "  tmux focus-events off · add 'set -g focus-events on' to ~/.tmux.conf\n"
+	busy := "❯ do it\n✻ Working…\n" + rule + "\n❯\u00a0\n" + rule + "\n  ⏵⏵ auto mode on · esc to interrupt · ← for agents\n" + notice
+	if !Busy(strings.Replace(busy, "✻ Working…\n", "", 1)) {
+		t.Fatal("Busy missed esc to interrupt above a notice")
+	}
+	lines, _, _ := Cut(busy).Region("mode")
+	if len(lines) != 1 || !strings.Contains(lines[0], "auto mode on") {
+		t.Fatalf("mode region = %q", lines)
+	}
+	idle := "  ids and the scratch project path.\n" + strings.Repeat("─", 56) + "\n  ⏵⏵ auto mode on (shift+tab to cycle)\n" + notice
+	if _, found := Input(idle); !found {
+		t.Fatal("overflowed box missed with a notice under the mode line")
+	}
+}

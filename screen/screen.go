@@ -69,9 +69,18 @@ func Busy(capture string) bool {
 	// The in-progress spinner above the box ("✢ Catapulting… (1m 56s)")
 	// counts on its own: a narrow pane can cut the mode line before the
 	// segment ("⏵⏵ bypass permissions on · 4 backgr…").
+	// Every footer row is read, not only the mode line: a notice can sit
+	// where the mode line was, and a busy pane read as idle gets typed into.
 	if l := Cut(capture); !l.Box.Empty() {
-		lines, _, _ := l.Region("mode")
-		return l.Spinner >= 0 || len(lines) > 0 && hasSegment(strings.TrimSpace(lines[0]), "esc to interrupt")
+		if l.Spinner >= 0 {
+			return true
+		}
+		for _, line := range l.Lines[l.Footer.Start:l.Footer.End] {
+			if hasSegment(strings.TrimSpace(line), "esc to interrupt") {
+				return true
+			}
+		}
+		return false
 	}
 	lines := strings.Split(strings.TrimRight(capture, "\n "), "\n")
 	seen := 0
