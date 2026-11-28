@@ -41,3 +41,5 @@ The first scenario run's failure was in the test harness. `killed-runner` typed 
 In 3 of the 15 scenario launches, Claude Code exited during startup. The system log shows no OOM kill. The harness retried each launch once, and each retry passed. The first two exits took the tmux server with them. Test servers now keep a dead pane, and the third exit showed status 1, a blank screen and no transcript. The cause is unknown.
 
 The port run hit one more startup exit, again status 1 with a blank screen.
+
+The harness answered the trust dialog with Down then Enter in these runs. On macOS that later picked "No, exit" when the Down was dropped, which also exits with status 1, so it may account for these exits. That hasn't been checked.
