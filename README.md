@@ -22,6 +22,25 @@ A session can't run `/compact`, `/clear`, `/context` or `/mcp` on itself, and it
 - **Read what you see.** The `/context` panel, a permission prompt or an error drawn only in the terminal can all be read with `gantline screen`. That is also what lets a session run as its own end-to-end test, as gantline's tests do.
 - **Work through a task list with a fresh context per task.** It can write a handoff file, `/clear` itself and pick up the next task from the file.
 
+## What a session can do
+
+| Task | Command |
+|---|---|
+| Read its activity, model, context use, input box, open dialog and queued items | `gantline status` |
+| Read its screen, or the newest block of output | `gantline screen`, `gantline screen --region last` |
+| Search its screen (matches come with row numbers) | `gantline screen --find '<regex>'` |
+| Run a built-in slash command once the current turn ends | `gantline q /context` |
+| Read what a queued command printed (`q` prints each item's ID: `q1`, `q2`, …) | `gantline q --show q1` |
+| Compact itself and carry on unprompted | `gantline q --then 'carry on' '/compact keep: the plan'` |
+| Clear its context | `gantline q /clear` |
+| Reconnect an MCP server | `gantline q '/mcp reconnect <server>'` |
+| Restart in place: same conversation and model, settings and MCP servers reloaded | `gantline restart` |
+| Switch model for this session only | `gantline model sonnet` |
+| List the tmux panes running Claude Code | `gantline panes` |
+| Send a message to another pane, or to itself | `gantline say <pane> '<text>'`, `gantline say self '<text>'` |
+
+A `<pane>` is a tmux pane ID such as `%3`; `gantline panes` lists them. Every `gantline q`, `restart` and `model` call takes its flags before the command text: `--then '<message>'`, `--timeout <duration>` (default `30m`) and `--pane <pane>`. Pass the command as one quoted argument with no newlines in it. `gantline model` takes any name `claude --model` accepts. Run `gantline -h` for every command, and `gantline <command> -h` for its flags. The `hook`, `statusline` and `launch` commands are internal: Claude Code and tmux run them.
+
 ## Demos
 
 Both recordings are real Claude Code sessions on Haiku. The recorder changes only the home path, the user name and the subscription plan Claude Code's banner shows, and it shortens pauses to 2 seconds. The pane at the bottom runs `gantline status` every second, and the clock in the corner shows where a pause was shortened. Neither session shows a permission prompt: the demo project allows the shell, file edits and its own MCP servers, and refuses anything else without asking. It loads none of the recorder's own settings, instructions or MCP servers.
@@ -41,25 +60,6 @@ Both recordings are real Claude Code sessions on Haiku. The recorder changes onl
 The demo meters list-price dollars per minute, which is Claude Code's own estimate (`cost.total_cost_usd`), because a few cents of Haiku never moves a usage limit by a whole point. `thermo.sh` also has a mode that meters your pace against the 5-hour or weekly limit on a subscription, falling back to list-price dollars in extra usage or with an API key. That mode has run only on test numbers, not through a real day of use.
 
 To record them again, install asciinema 2.x and agg, then run `demo/record.sh tool` or `demo/record.sh burn` in a sandbox, as with gantline itself: the session has the shell without prompts, and the tool demo has it write an MCP server and restart into it, which runs whatever command it registered. They need asciinema 2 and agg, and each run makes a few Haiku calls.
-
-## What a session can do
-
-| Task | Command |
-|---|---|
-| Read its activity, model, context use, input box, open dialog and queued items | `gantline status` |
-| Read its screen, or the newest block of output | `gantline screen`, `gantline screen --region last` |
-| Search its screen (matches come with row numbers) | `gantline screen --find '<regex>'` |
-| Run a built-in slash command once the current turn ends | `gantline q /context` |
-| Read what a queued command printed (`q` prints each item's ID: `q1`, `q2`, …) | `gantline q --show q1` |
-| Compact itself and carry on unprompted | `gantline q --then 'carry on' '/compact keep: the plan'` |
-| Clear its context | `gantline q /clear` |
-| Reconnect an MCP server | `gantline q '/mcp reconnect <server>'` |
-| Restart in place: same conversation and model, settings and MCP servers reloaded | `gantline restart` |
-| Switch model for this session only | `gantline model sonnet` |
-| List the tmux panes running Claude Code | `gantline panes` |
-| Send a message to another pane, or to itself | `gantline say <pane> '<text>'`, `gantline say self '<text>'` |
-
-A `<pane>` is a tmux pane ID such as `%3`; `gantline panes` lists them. Every `gantline q`, `restart` and `model` call takes its flags before the command text: `--then '<message>'`, `--timeout <duration>` (default `30m`) and `--pane <pane>`. Pass the command as one quoted argument with no newlines in it. `gantline model` takes any name `claude --model` accepts. Run `gantline -h` for every command, and `gantline <command> -h` for its flags. The `hook`, `statusline` and `launch` commands are internal: Claude Code and tmux run them.
 
 ## Before you begin
 
