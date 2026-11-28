@@ -104,6 +104,12 @@ func Cut(capture string) Layout {
 		break
 	}
 	if l.Box.Empty() {
+		if b, ok := overflowBox(lines); ok {
+			l.Box, l.Footer, top = b, Span{b.End + 1, n}, -1
+			l.HiddenAbove = true
+		}
+	}
+	if l.Box.Empty() {
 		// No box: a dialog replaces it, drawn under one rule.
 		for i := n - 1; i >= 0; i-- {
 			if isRule(lines[i]) {
@@ -128,6 +134,42 @@ func Cut(capture string) Layout {
 		}
 	}
 	return l
+}
+
+// overflowBox finds an input box taller than the pane that Claude Code drew
+// whole, so its top rule and ❯ line scrolled into tmux's history (2.1.332
+// under tmux 3.8 on macOS, 56x16 pane). What shows is the box's tail: from
+// the top row, only indented continuation lines, then the one rule on
+// screen, then a footer ending in the mode line. A dialog draws its options
+// under its rule, so its footer never reads as a mode line.
+func overflowBox(lines []string) (Span, bool) {
+	rule := -1
+	for i, line := range lines {
+		if isRule(line) {
+			if rule >= 0 {
+				return Span{}, false
+			}
+			rule = i
+		}
+	}
+	if rule < 1 || rule == len(lines)-1 {
+		return Span{}, false
+	}
+	for _, line := range lines[:rule] {
+		if strings.TrimSpace(line) != "" && !strings.HasPrefix(line, "  ") {
+			return Span{}, false
+		}
+	}
+	last := ""
+	for _, line := range lines[rule+1:] {
+		if t := strings.TrimSpace(line); t != "" {
+			last = t
+		}
+	}
+	if !strings.Contains(last, "shift+tab") && !strings.Contains(last, "? for shortcuts") {
+		return Span{}, false
+	}
+	return Span{0, rule}, true
 }
 
 // trim narrows s past blank lines at either end.

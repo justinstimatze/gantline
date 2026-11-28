@@ -234,3 +234,39 @@ func TestPlainDropsSuggestion(t *testing.T) {
 		t.Fatalf("typed draft = %q", in)
 	}
 }
+
+// A /compact taller than a 56x16 pane, drawn whole by Claude Code 2.1.332
+// under tmux 3.8 on macOS: the box's top rule and ❯ line are in tmux's
+// history, and the screen shows only its tail.
+func TestOverflowedBox(t *testing.T) {
+	keep := "Keep the step files, the queue ids and the scratch project path. "
+	typed := "/compact keep: this is the gantline e2e test. " + strings.Repeat(keep, 14)
+	screenText := "  step files, the queue ids and the scratch project\n" +
+		"  path. Keep the step files, the queue ids and the\n" +
+		"  scratch project path. Keep the step files, the queue\n" +
+		"  ids and the scratch project path. \n" +
+		strings.Repeat("─", 56) + "\n  ⏵⏵ auto mode on (shift+tab to cycle)\n"
+	in, found := Input(screenText)
+	if !found || !strings.HasPrefix(in, Hidden) {
+		t.Fatalf("Input = %q, %v; want the box's tail after Hidden", in, found)
+	}
+	if !SameText(in, typed) {
+		t.Fatalf("SameText(%q, typed) = false", in)
+	}
+	if SameText(in, typed+"x") {
+		t.Fatal("SameText matched text with a different end")
+	}
+	if Busy(screenText) {
+		t.Fatal("Busy on an idle overflowed box")
+	}
+	// The same shape with options under the rule is a dialog, not a box.
+	dialog := "  some wrapped output line\n" + strings.Repeat("─", 56) + "\n  ❯ 1. Yes\n    2. No\n  Enter to confirm · Esc to cancel\n"
+	if _, found := Input(dialog); found {
+		t.Fatal("a dialog read as an overflowed box")
+	}
+	// Conversation output starts at column 0 ("⏺ ..."), so a screen whose
+	// box is simply missing never reads as an overflowed one.
+	if _, found := Input("⏺ done\n  more\n" + strings.Repeat("─", 56) + "\n  ⏵⏵ auto mode on (shift+tab to cycle)\n"); found {
+		t.Fatal("conversation output read as an overflowed box")
+	}
+}
