@@ -283,7 +283,9 @@ func acceptTrust(s tmux.Server) error {
 		}
 		c, _ := s.Capture("%0")
 		l := screen.Cut(c)
-		if screen.Dialog(l) == "trust_folder" {
+		// In a pane shorter than the dialog its top rule is off screen and
+		// screen.Dialog finds no dialog; its two options still show.
+		if screen.Dialog(l) == "trust_folder" || (strings.Contains(c, "Yes, I trust this folder") && strings.Contains(c, "No, exit")) {
 			// The cursor starts on "No, exit". Press Enter only once the
 			// screen shows it on "Yes": a Down sent while the dialog is
 			// still drawing is dropped, and Enter would then exit.
