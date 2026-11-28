@@ -65,7 +65,7 @@ To record them again, install asciinema 2.x and agg, then run `demo/record.sh to
 
 You need:
 
-- Linux or macOS, and tmux 3.0 or later. gantline drives panes with `tmux send-keys`. The real-session tests in this README ran on Linux. On macOS the unit tests pass in CI, but no real Claude Code session has been driven there yet.
+- Linux or macOS, and tmux 3.0 or later. gantline drives panes with `tmux send-keys`. The real-session tests in this README ran on Linux; on macOS they run on a GitHub runner (see below). On macOS, a slash command taller than the pane is never submitted: Claude Code draws the box at full height and its top scrolls off, so gantline can't confirm the text and waits, logging why, until the item expires. Give long `/compact` instructions a pane tall enough to hold them.
 - Go 1.26 or later (`go version`), with `$(go env GOPATH)/bin` on your `PATH`. An older Go 1.21+ downloads 1.26 by itself when `GOTOOLCHAIN` is left at its default.
 - Claude Code 2.1.332 (`claude --version`), the only version gantline has been tested on. gantline reads screen strings from it. Others may work, but a new version can move the strings gantline acts on, and `gantline status` warns when the running version hasn't been checked. [`docs/claude-code-behavior.md`](docs/claude-code-behavior.md) lists the behavior gantline relies on.
 - `jq`, which `gantline install` uses to validate the settings it writes.

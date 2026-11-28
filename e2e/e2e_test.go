@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -136,7 +137,7 @@ func selfControl(t *testing.T, bin string) {
 	launch := strings.Join(append(env, "claude", "--model", "haiku"), " ")
 	args := newSession(project, launch)
 	if live() && startSmall() {
-		args = newSessionSized(project, launch, 56, 16)
+		args = newSessionSized(project, launch, 56, liveRows())
 	}
 	if _, err := s.Run(args...); err != nil {
 		t.Fatal(err)
@@ -167,7 +168,7 @@ func selfControl(t *testing.T, bin string) {
 		return string(out)
 	}
 	if live() && !startSmall() {
-		if _, err := s.Run("resize-window", "-t", "%0", "-x", "56", "-y", "16"); err != nil {
+		if _, err := s.Run("resize-window", "-t", "%0", "-x", "56", "-y", fmt.Sprint(liveRows())); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -503,6 +504,18 @@ func newSessionSized(project, command string, w, h int) []string {
 // startSmall (GANTLINE_E2E_START_SMALL=1) starts the live variant's
 // session at 56x16 instead of resizing it there after startup, to tell a
 // resize Claude Code missed from a pane that is simply short.
+// liveRows is the live pane's height. On macOS (Claude Code 2.1.332, tmux
+// 3.8) an input box taller than the pane is drawn at full height, its top
+// scrolls away and redraws leave stray rows, so gantline can't confirm a
+// /compact it typed and never submits it. The 995-byte /compact needs about
+// 20 rows at 56 columns; macOS gets 40, so the rest is tested there.
+func liveRows() int {
+	if runtime.GOOS == "darwin" {
+		return 40
+	}
+	return 16
+}
+
 func startSmall() bool { return os.Getenv("GANTLINE_E2E_START_SMALL") == "1" }
 
 // sayFirst sends a session's first prompt. A freshly drawn input box can
