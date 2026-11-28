@@ -180,8 +180,8 @@ func overflowBox(lines []string) (Span, bool) {
 
 // modeLine is the footer row holding the mode line: the last one with a
 // mode marker, else the last row. Claude Code can draw a notice under the
-// mode line ("tmux focus-events off · add 'set -g focus-events on'…",
-// macOS runner, tmux 3.8), which reading only the last row mistook for it.
+// mode line ("tmux focus-events off · add 'set -g focus-events on'…" on
+// macOS with tmux 3.8), so the last row isn't always the mode line.
 func (l Layout) modeLine(f Span) int {
 	for i := f.End - 1; i >= f.Start; i-- {
 		if isModeLine(l.Lines[i]) {

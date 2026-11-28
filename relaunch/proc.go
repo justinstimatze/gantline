@@ -89,8 +89,7 @@ func findClaude(tree proc.Tree, pid int) (int, error) {
 
 // isClaude matches the native binary by name: "claude" from the native
 // installer, "claude.exe" from npm, whose bin entry is bin/claude.exe on
-// every platform. On a macOS runner with the npm install, matching only
-// "claude" found no process.
+// every platform. On macOS the process takes that name ("claude.exe").
 func isClaude(pid int) bool {
 	n := proc.Name(pid)
 	return n == "claude" || n == "claude.exe"
