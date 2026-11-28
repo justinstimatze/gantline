@@ -2,6 +2,17 @@
 
 The tests in `e2e/` need a Claude Code login, so they don't run on every push. CI runs the unit tests on Linux and macOS against a fake Claude Code screen, and the `e2e` workflow runs the real tests on a GitHub runner when started by hand. This file records the real runs, newest first. Add a section when you run them on a new Claude Code version or change the queue runner, the screen model or `say`.
 
+## 2026-11-27, Linux runner
+
+After the macOS fixes below changed the screen model and `say`, the same tests ran on GitHub's `ubuntu-26.04` runner: Claude Code 2.1.332 from npm, tmux from Ubuntu's packages, Go 1.26.11, logged in with an API key. Run 46109711920 of the `e2e` workflow:
+
+| Test | Pane | Result | Wall time |
+|---|---|---|---|
+| `TestSelfControl`, `GANTLINE_E2E_LIVE=1` | 56x16 | 1 of 1 passed | 1m19s |
+| `TestScenarios` | 200x50 | 6 of 6 passed | 18s to 1m0s |
+
+Every delivery's `gantline audit` was clean.
+
 ## 2026-11-27, macOS
 
 Claude Code 2.1.332 from npm, Haiku sessions with a Sonnet relaunch, tmux 3.8 from Homebrew, Go 1.26.11, GitHub's `macos-26-arm64` runner, logged in with an API key. Run 46098033324 of the `e2e` workflow:
