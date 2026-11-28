@@ -145,6 +145,11 @@ func selfControl(t *testing.T, bin string) {
 	servers.Lock()
 	servers.list = append(servers.list, s)
 	servers.Unlock()
+	if term, err := s.Run("show-options", "-gv", "default-terminal"); err == nil {
+		has := func(name string) bool { return exec.Command("infocmp", name).Run() == nil }
+		term = strings.TrimSpace(term)
+		t.Logf("tmux default-terminal %s (terminfo entry: %v); tmux-256color terminfo entry: %v", term, has(term), has("tmux-256color"))
+	}
 	sock, _ := s.Run("display-message", "-p", "-t", "%0", "#{socket_path}")
 	key := journal.Key(strings.TrimSpace(sock), "%0")
 	t.Cleanup(func() {
@@ -497,8 +502,12 @@ func newSession(project, command string) []string {
 }
 
 func newSessionSized(project, command string, w, h int) []string {
-	return []string{"start-server", ";", "set-option", "-g", "remain-on-exit", "on", ";",
-		"new-session", "-d", "-x", fmt.Sprint(w), "-y", fmt.Sprint(h), "-c", project, command}
+	args := []string{"start-server", ";", "set-option", "-g", "remain-on-exit", "on", ";"}
+	// GANTLINE_E2E_TERM sets tmux's default-terminal, the TERM claude sees.
+	if term := os.Getenv("GANTLINE_E2E_TERM"); term != "" {
+		args = append(args, "set-option", "-g", "default-terminal", term, ";")
+	}
+	return append(args, "new-session", "-d", "-x", fmt.Sprint(w), "-y", fmt.Sprint(h), "-c", project, command)
 }
 
 // startSmall (GANTLINE_E2E_START_SMALL=1) starts the live variant's
@@ -510,6 +519,9 @@ func newSessionSized(project, command string, w, h int) []string {
 // /compact it typed and never submits it. The 995-byte /compact needs about
 // 20 rows at 56 columns; macOS gets 40, so the rest is tested there.
 func liveRows() int {
+	if n, err := strconv.Atoi(os.Getenv("GANTLINE_E2E_ROWS")); err == nil && n > 0 {
+		return n
+	}
 	if runtime.GOOS == "darwin" {
 		return 40
 	}
