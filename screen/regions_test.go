@@ -113,6 +113,17 @@ func TestEveryFingerprintHasSyntheticCase(t *testing.T) {
 	}
 }
 
+// The trust dialog with the cursor moved to "Yes", as on a macOS runner.
+func TestTrustDialogCursorOnYes(t *testing.T) {
+	yes := strings.Replace(strings.Replace(trustScreen, " ❯ No, exit", "   No, exit", 1), "   Yes, I trust", " ❯ Yes, I trust", 1)
+	if yes == trustScreen {
+		t.Fatal("fixture unchanged")
+	}
+	if got := Dialog(Cut(yes)); got != "trust_folder" {
+		t.Fatalf("Dialog = %q, want trust_folder", got)
+	}
+}
+
 var modelSwitchScreen = "● done\n✻ Cogitated for 14s · done 11:19 PM\n" + strings.Repeat("▔", 40) + "\n" +
 	"  Switch model?\n  Your next response will be slower and use more tokens\n\n" +
 	"  ❯ 1. Yes, switch to Sonnet 5.5\n    2. No, go back\n  Enter to confirm · Esc to cancel\n"

@@ -117,9 +117,12 @@ func hasSegment(line, seg string) bool {
 	return false
 }
 
+// hasLine reports whether a line reads text, ignoring the "❯" cursor that
+// marks a dialog's selected option.
 func hasLine(lines []string, text string) bool {
 	for _, l := range lines {
-		if strings.TrimSpace(l) == text {
+		l = strings.TrimSpace(l)
+		if l == text || strings.TrimSpace(strings.TrimPrefix(l, "❯")) == text {
 			return true
 		}
 	}
