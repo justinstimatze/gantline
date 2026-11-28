@@ -539,6 +539,15 @@ func saveFailureCapture(t *testing.T, s tmux.Server) {
 	if os.WriteFile(path, []byte(c), 0o600) == nil {
 		t.Logf("screen saved to %s", path)
 	}
+	// The same pane with tmux's history above it, plus the pane size and
+	// history length, to show whether part of the screen scrolled away.
+	if h, err := s.CaptureScroll("%0", 500, true); err == nil {
+		size, _ := s.Run("display-message", "-p", "-t", "%0", "#{pane_width}x#{pane_height} history=#{history_size} tmux=#{version}")
+		hist := strings.TrimSuffix(path, ".txt") + "-history.txt"
+		if os.WriteFile(hist, []byte(size+"\n"+h), 0o600) == nil {
+			t.Logf("screen with history saved to %s", hist)
+		}
+	}
 }
 
 // servers are the tmux servers runs started, for the signal and deadline
