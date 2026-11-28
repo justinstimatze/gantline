@@ -1,0 +1,68 @@
+name: e2e
+
+# The real Claude Code tests in e2e/, on a GitHub-hosted runner. Each run
+# starts real Haiku sessions and a Sonnet relaunch on the repository's
+# ANTHROPIC_API_KEY secret, so it runs only when started by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Runner
+        type: choice
+        options: [macos-latest, ubuntu-latest]
+        default: macos-latest
+      tests:
+        description: Which tests
+        type: choice
+        options: [all, self-control, scenarios]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_VERSION: 2.1.332
+    steps:
+      - name: Check the secret is set
+        run: test -n "$ANTHROPIC_API_KEY" || { echo "Set the ANTHROPIC_API_KEY repository secret first."; exit 1; }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.x'
+      - name: Install tmux and jq
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then brew install tmux jq bash; else sudo apt-get update && sudo apt-get install -y tmux jq psmisc; fi
+      - name: Install Claude Code
+        run: npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" && claude --version
+      - name: Set up a Claude Code home for the runner
+        # Onboarding done, the key pre-approved (Claude Code keys approval on
+        # its last 20 characters), and tools allowed without prompts on this
+        # throwaway machine. A project ask rule still beats these allows.
+        run: |
+          mkdir -p ~/.claude
+          jq -n --arg k "${ANTHROPIC_API_KEY: -20}" --arg v "$CLAUDE_CODE_VERSION" \
+            '{hasCompletedOnboarding: true, lastOnboardingVersion: $v, theme: "dark",
+              customApiKeyResponses: {approved: [$k], rejected: []}}' > ~/.claude.json
+          echo '{"permissions": {"allow": ["Bash", "Write", "Edit", "Read"]}}' > ~/.claude/settings.json
+      - name: TestSelfControl in a short pane
+        if: inputs.tests != 'scenarios'
+        run: GANTLINE_E2E_LIVE=1 go test -tags realclaude ./e2e -run TestSelfControl -count=1 -v -timeout 25m
+      - name: TestScenarios
+        if: inputs.tests != 'self-control' && !cancelled()
+        run: go test -tags realclaude ./e2e -run TestScenarios -count=1 -v -timeout 30m
+      - name: Keep failure screens
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-screens-${{ inputs.os }}
+          path: ~/.local/state/gantline/corpus/
+          if-no-files-found: ignore
