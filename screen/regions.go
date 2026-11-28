@@ -30,6 +30,10 @@ type Layout struct {
 	// "─── ↑ 2 more ───" and the ❯ line is off screen (2.1.332 in a 16-row
 	// pane), or its bottom rule reads "↓ N more" when the cursor is above.
 	HiddenAbove, HiddenBelow bool
+	// Overflow: the box was drawn taller than the pane with no "↑ N more"
+	// rule (macOS, tmux 3.8). Its visible rows can hold stale lines from
+	// redraws, so only its last rows can be trusted (TailMatches).
+	Overflow bool
 }
 
 // Regions lists the names Region accepts.
@@ -106,7 +110,7 @@ func Cut(capture string) Layout {
 	if l.Box.Empty() {
 		if b, ok := overflowBox(lines); ok {
 			l.Box, l.Footer, top = b, Span{b.End + 1, n}, -1
-			l.HiddenAbove = true
+			l.HiddenAbove, l.Overflow = true, true
 		}
 	}
 	if l.Box.Empty() {

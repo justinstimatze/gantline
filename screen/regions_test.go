@@ -293,3 +293,32 @@ func TestNoticeUnderModeLine(t *testing.T) {
 		t.Fatal("overflowed box missed with a notice under the mode line")
 	}
 }
+
+// Stale rows in the middle of an overflowed box (redraw leftovers on the
+// macOS runner) don't stop TailMatches, which reads only the last rows.
+func TestTailMatchesOverflowWithStaleRows(t *testing.T) {
+	keep := "Keep the step files, the queue ids and the scratch project path. "
+	typed := "/compact keep: this is the gantline e2e test. " + strings.Repeat(keep, 14)
+	stale := "  the scratch project path. Keep the step files, the\n" +
+		"  queue ids and the scratch project path. Keep the\n" +
+		"  queue ids and the scratch project path. Keep the\n" + // duplicated row
+		"  step files, the queue ids and the scratch project\n" +
+		"  path. Keep the step files, the queue ids and the\n" +
+		"  scratch project path. Keep the step files, the queue\n" +
+		"  ids and the scratch project path. \n" +
+		strings.Repeat("─", 56) + "\n  ⏵⏵ auto mode on (shift+tab to cycle)\n"
+	if in, _ := Input(stale); SameText(in, typed) {
+		t.Fatal("fixture should defeat the full-text check")
+	}
+	if !TailMatches(stale, typed) {
+		t.Fatal("TailMatches missed a box ending in the typed text")
+	}
+	if TailMatches(stale, typed+"extra") {
+		t.Fatal("TailMatches matched text with a different end")
+	}
+	// A box that fits the pane never takes the tail path.
+	fits := rule + "\n❯ " + "short text here that fits\n" + rule + "\n  ⏵⏵ auto mode on (shift+tab to cycle)\n"
+	if TailMatches(fits, "short text here that fits") {
+		t.Fatal("TailMatches on a box that is not overflowed")
+	}
+}

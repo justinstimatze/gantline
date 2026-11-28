@@ -90,6 +90,7 @@ type runner struct {
 	o          RunOptions
 	lastPrompt time.Time // when this runner last typed a prompt that starts a turn
 	cur        string    // the item being worked, for the keys audit
+	tail       bool      // the last submit was confirmed from the box's end only
 }
 
 func (r *runner) run(it Item) {
@@ -179,6 +180,22 @@ func (r *runner) attempt(it Item) (state, detail string, enters int) {
 		}
 	}
 	out := Verify(r.key, it.Cmd, typed, r.o.Verify)
+	if out.State == Done && r.tail {
+		// Only the box's end was on screen: compare what Claude Code
+		// recorded with what was typed.
+		want := strings.TrimSpace(strings.TrimPrefix(it.Cmd, "/compact"))
+		got, found := CompactArgs(transcript(r.key), typed)
+		switch {
+		case !found:
+			out.Detail += " (only the end of the text could be read on screen, and the transcript has no record of the instructions)"
+			out.State = Unconfirmed
+		case strings.Join(strings.Fields(got), " ") != strings.Join(strings.Fields(want), " "):
+			out.State = Failed
+			out.Detail = fmt.Sprintf("compacted, but with instructions that differ from the typed ones (%d chars recorded, %d typed): only the end of the box was on screen", len(got), len(want))
+		default:
+			out.Detail += " (instructions checked against the transcript; the box was taller than the pane)"
+		}
+	}
 	if out.State == Done && strings.HasPrefix(it.Cmd, "/") {
 		if c, err := r.s.Capture(r.pane); err == nil {
 			if lines, _, _ := screen.Cut(c).Region("last"); len(lines) > 0 {
@@ -255,6 +272,12 @@ func (r *runner) typeWhenIdle(text string, deadline time.Time) (n int, err error
 	}()
 	opt := r.o.Say
 	opt.Lock, opt.IdleOnly = r.key, true
+	// A /compact taller than the pane may show only its end (macOS); the
+	// result is then checked against the transcript (attempt).
+	r.tail = false
+	if Kind(text) == "compact" {
+		opt.Tail = &r.tail
+	}
 	drops := 0
 	waiting := "" // what the runner last said it waits on
 	for {

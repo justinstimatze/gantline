@@ -106,3 +106,22 @@ func TestLocalOutputsShapes(t *testing.T) {
 		t.Fatalf("LocalOutputs = %q", got)
 	}
 }
+
+func TestCompactArgs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "t.jsonl")
+	before := time.Now().Add(-time.Minute)
+	entry := func(ts time.Time, content string) string {
+		b, _ := json.Marshal(map[string]any{"type": "user", "timestamp": ts.Format(time.RFC3339Nano), "message": map[string]any{"role": "user", "content": content}})
+		return string(b) + "\n"
+	}
+	cmd := "<command-name>/compact</command-name>\n            <command-message>compact</command-message>\n            <command-args>keep: a &amp; b</command-args>"
+	old := "<command-name>/compact</command-name>\n<command-message>compact</command-message>\n<command-args>older</command-args>"
+	os.WriteFile(path, []byte(entry(before.Add(-time.Hour), old)+entry(time.Now(), cmd)), 0o600)
+	got, ok := CompactArgs(path, before)
+	if !ok || got != "keep: a & b" {
+		t.Fatalf("CompactArgs = %q, %v", got, ok)
+	}
+	if _, ok := CompactArgs(path, time.Now().Add(time.Minute)); ok {
+		t.Fatal("found a /compact older than t")
+	}
+}

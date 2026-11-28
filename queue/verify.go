@@ -3,6 +3,7 @@ package queue
 import (
 	"bufio"
 	"encoding/json"
+	"html"
 	"io"
 	"os"
 	"regexp"
@@ -186,6 +187,50 @@ func CompactedAfter(path string, t time.Time) bool {
 		}
 	}
 	return false
+}
+
+var compactArgs = regexp.MustCompile(`(?s)<command-name>/compact</command-name>.*?<command-args>(.*?)</command-args>`)
+
+// CompactArgs returns the arguments of the first /compact the transcript
+// at path records after t, and whether it found one. Only the last 4 MB of
+// the file is read.
+func CompactArgs(path string, t time.Time) (string, bool) {
+	if path == "" {
+		return "", false
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return "", false
+	}
+	defer f.Close()
+	if fi, err := f.Stat(); err == nil && fi.Size() > tailBytes {
+		f.Seek(-tailBytes, io.SeekEnd)
+	}
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 256<<10), 16<<20)
+	for sc.Scan() {
+		line := sc.Bytes()
+		if !strings.Contains(string(line), "command-args") {
+			continue
+		}
+		var e struct {
+			Timestamp time.Time `json:"timestamp"`
+			Message   struct {
+				Content json.RawMessage `json:"content"`
+			} `json:"message"`
+		}
+		if json.Unmarshal(line, &e) != nil || !e.Timestamp.After(t) {
+			continue
+		}
+		var c string
+		if json.Unmarshal(e.Message.Content, &c) != nil {
+			continue
+		}
+		if m := compactArgs.FindStringSubmatch(c); m != nil {
+			return html.UnescapeString(m[1]), true
+		}
+	}
+	return "", false
 }
 
 var stdoutTag = regexp.MustCompile(`(?s)<local-command-stdout>(.*?)</local-command-stdout>`)

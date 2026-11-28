@@ -128,6 +128,27 @@ func SameText(input, typed string) bool {
 	}
 }
 
+// TailMatches reports whether an overflowed box (Layout.Overflow) ends
+// with the end of typed. Claude Code redraws the rows at the cursor on
+// every key, but rows further up can keep stale lines from earlier
+// redraws, so only the last two non-blank rows are compared, and they must
+// hold at least 24 non-space characters. A key dropped further back is not
+// seen here; the caller checks the result afterwards.
+func TailMatches(capture, typed string) bool {
+	l := Cut(capture)
+	if !l.Overflow {
+		return false
+	}
+	var rows []string
+	for i := l.Box.End - 1; i >= l.Box.Start && len(rows) < 2; i-- {
+		if t := strings.TrimSpace(l.Lines[i]); t != "" {
+			rows = append([]string{t}, rows...)
+		}
+	}
+	tail := strings.ReplaceAll(strings.Join(rows, ""), " ", "")
+	return len(tail) >= 24 && strings.HasSuffix(strings.ReplaceAll(typed, " ", ""), tail)
+}
+
 // HeadsUp reports whether "0: Dismiss" appears anywhere on screen, the
 // pattern an earlier pane-messaging script used for a "Heads up" notice. UNVERIFIED: no
 // real capture of the notice exists, and the text also matches ordinary

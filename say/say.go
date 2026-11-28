@@ -51,6 +51,12 @@ type Options struct {
 	// last Enter, waiting up to LockWait (default 60s) for it.
 	Lock     string
 	LockWait time.Duration
+	// Tail, when set, lets a box taller than the pane that Claude Code
+	// drew whole (screen.Layout.Overflow) count as showing the text once
+	// its last rows match (screen.TailMatches), and Submit sets *Tail. A
+	// key dropped further back goes unseen, so the caller must confirm what
+	// was submitted another way.
+	Tail *bool
 	// IdleOnly refuses with ErrBusy when the pane shows a turn running.
 	// Without it, text typed into a busy pane is queued by Claude Code.
 	IdleOnly bool
@@ -155,6 +161,10 @@ func Submit(s tmux.Server, pane, text string, opt Options) (int, error) {
 		if ok && !screen.Pasted(got) {
 			break
 		}
+		if !ok && tailShown(s, pane, text, opt) {
+			*opt.Tail = true
+			break
+		}
 		clearBox(s, pane)
 		if !ok || try == 3 {
 			if c, err := s.Capture(pane); err == nil && screen.HeadsUp(c) {
@@ -215,7 +225,9 @@ func echoErr(got string) error {
 // partial slash command it picks from the autocomplete menu), and another
 // press could pick again, so it stops.
 func pressEnter(s tmux.Server, pane, text string, opt Options) (int, error) {
-	unchanged := func(in string) bool { return screen.SameText(in, text) || screen.Pasted(in) }
+	unchanged := func(in string) bool {
+		return screen.SameText(in, text) || screen.Pasted(in) || tailShown(s, pane, text, opt)
+	}
 	for attempt := 1; attempt <= opt.Attempts; attempt++ {
 		if err := s.Enter(pane); err != nil {
 			return attempt, err
@@ -268,7 +280,7 @@ func ClearOwn(s tmux.Server, pane, text string) bool {
 		return false
 	}
 	in, ok := screen.Input(c)
-	if !ok || in == "" || !screen.SameText(in, text) {
+	if !ok || in == "" || !(screen.SameText(in, text) || screen.TailMatches(c, text)) {
 		return false
 	}
 	clearBox(s, pane)
@@ -310,6 +322,16 @@ func clearBox(s tmux.Server, pane string) {
 		s.Run("send-keys", "-t", pane, "C-u")
 		time.Sleep(50 * time.Millisecond)
 	}
+}
+
+// tailShown reports whether opt allows tail acceptance and the pane shows
+// an overflowed box ending in text.
+func tailShown(s tmux.Server, pane, text string, opt Options) bool {
+	if opt.Tail == nil {
+		return false
+	}
+	c, err := s.Capture(pane)
+	return err == nil && screen.TailMatches(c, text)
 }
 
 // slower halves the chunk size (floor 32 bytes) and quadruples the gap
