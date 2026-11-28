@@ -334,6 +334,26 @@ func trustYesSelected(capture string) bool {
 	return false
 }
 
+// partOf reports whether panel has at least three non-blank lines and
+// each one is a line of full, ignoring leading and trailing spaces.
+func partOf(panel, full string) bool {
+	have := map[string]bool{}
+	for _, l := range strings.Split(full, "\n") {
+		have[strings.TrimSpace(l)] = true
+	}
+	n := 0
+	for _, l := range strings.Split(panel, "\n") {
+		if l = strings.TrimSpace(l); l == "" {
+			continue
+		}
+		if !have[l] {
+			return false
+		}
+		n++
+	}
+	return n >= 3
+}
+
 // checkRun asserts the outcome from the queue, the journal and the files
 // the session wrote.
 func checkRun(t *testing.T, project, key string) {
@@ -420,8 +440,11 @@ func checkRun(t *testing.T, project, key string) {
 	// full-size pane, from gantline's copy taken as /context finished in
 	// the 16-row one (only the panel's last rows fit there).
 	panel, _ := os.ReadFile(filepath.Join(project, "panel.txt"))
+	full, _ := os.ReadFile(filepath.Join(project, "ctx.txt"))
 	switch {
-	case live() && strings.Contains(string(panel), "Free space"):
+	case live() && partOf(string(panel), string(full)):
+		// Which rows fit depends on the panel's length, which varies
+		// (the skills list), so the copy is checked against the full panel.
 		t.Logf("screen copy holds the visible end of the /context panel")
 	case !live() && ctxLine.Match(panel):
 		t.Logf("screen read found the /context panel")
