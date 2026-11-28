@@ -18,6 +18,10 @@ on:
         type: choice
         options: [all, self-control, scenarios]
         default: all
+      start_small:
+        description: Start the self-control pane at 56x16 instead of resizing it there
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -69,7 +73,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
         if: inputs.tests != 'scenarios'
-        run: GANTLINE_E2E_LIVE=1 go test -tags realclaude ./e2e -run TestSelfControl -count=1 -v -timeout 15m
+        run: GANTLINE_E2E_LIVE=1 GANTLINE_E2E_START_SMALL=${{ inputs.start_small && '1' || '' }} go test -tags realclaude ./e2e -run TestSelfControl -count=1 -v -timeout 15m
       - name: TestScenarios
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

@@ -134,7 +134,11 @@ func selfControl(t *testing.T, bin string) {
 	s := tmux.Server{Socket: fmt.Sprintf("gl-e2e-%d", time.Now().UnixNano())}
 	env := []string{"env", "PATH=" + bin + ":" + os.Getenv("PATH"), "GANTLINE_TMUX_SOCKET=" + s.Socket}
 	launch := strings.Join(append(env, "claude", "--model", "haiku"), " ")
-	if _, err := s.Run(newSession(project, launch)...); err != nil {
+	args := newSession(project, launch)
+	if live() && startSmall() {
+		args = newSessionSized(project, launch, 56, 16)
+	}
+	if _, err := s.Run(args...); err != nil {
 		t.Fatal(err)
 	}
 	servers.Lock()
@@ -162,7 +166,7 @@ func selfControl(t *testing.T, bin string) {
 		}
 		return string(out)
 	}
-	if live() {
+	if live() && !startSmall() {
 		if _, err := s.Run("resize-window", "-t", "%0", "-x", "56", "-y", "16"); err != nil {
 			t.Fatal(err)
 		}
@@ -486,9 +490,18 @@ func endSession(s tmux.Server, key, project string, remove bool) {
 // server keeps a pane whose process exited, so a claude that quits at
 // startup leaves its last screen for acceptTrust to report.
 func newSession(project, command string) []string {
-	return []string{"start-server", ";", "set-option", "-g", "remain-on-exit", "on", ";",
-		"new-session", "-d", "-x", "200", "-y", "50", "-c", project, command}
+	return newSessionSized(project, command, 200, 50)
 }
+
+func newSessionSized(project, command string, w, h int) []string {
+	return []string{"start-server", ";", "set-option", "-g", "remain-on-exit", "on", ";",
+		"new-session", "-d", "-x", fmt.Sprint(w), "-y", fmt.Sprint(h), "-c", project, command}
+}
+
+// startSmall (GANTLINE_E2E_START_SMALL=1) starts the live variant's
+// session at 56x16 instead of resizing it there after startup, to tell a
+// resize Claude Code missed from a pane that is simply short.
+func startSmall() bool { return os.Getenv("GANTLINE_E2E_START_SMALL") == "1" }
 
 // sayFirst sends a session's first prompt. A freshly drawn input box can
 // drop every key while the session is still starting; say reports that
