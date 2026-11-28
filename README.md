@@ -172,7 +172,7 @@ Each hook is a short Go process. Run 300 times each with `hyperfine` on a loaded
 
 The tests in `e2e/` drive a real Claude Code session through the whole loop. It reads its own status and runs `/context` on itself, reading the panel back from the transcript and from the screen. It compacts itself with a keep list longer than 900 bytes, which tests that long slash commands are typed whole, and then resumes unprompted. It reconnects an MCP server and relaunches itself on another model. Each step is checked against the journal, the queue and files the session wrote, and `gantline audit` runs at the end.
 
-These runs use the Claude Code login and settings of the machine they run on, so run them inside your sandbox. The `e2e` workflow in `.github/workflows/e2e.yml` runs the same tests on a GitHub-hosted macOS or Linux runner, started by hand, with an `ANTHROPIC_API_KEY` repository secret. Each run is one short Haiku session plus a Sonnet relaunch.
+These runs use the Claude Code login and settings of the machine they run on, so run them inside your sandbox. The `e2e` workflow in `.github/workflows/e2e.yml` runs the same tests on a GitHub-hosted macOS or Linux runner, started by hand. It logs in with a `CLAUDE_CODE_OAUTH_TOKEN` repository secret from `claude setup-token`, which uses a Claude subscription, or an `ANTHROPIC_API_KEY` secret, which bills API usage. Each run is one short Haiku session plus a Sonnet relaunch.
 
 ```sh
 # One run in a 200x50 pane, on Haiku:

@@ -1,8 +1,10 @@
 name: e2e
 
 # The real Claude Code tests in e2e/, on a GitHub-hosted runner. Each run
-# starts real Haiku sessions and a Sonnet relaunch on the repository's
-# ANTHROPIC_API_KEY secret, so it runs only when started by hand.
+# starts real Haiku sessions and a Sonnet relaunch, so it runs only when
+# started by hand. It logs in with the CLAUDE_CODE_OAUTH_TOKEN secret (from
+# `claude setup-token`, used against a Claude subscription) or, failing
+# that, the ANTHROPIC_API_KEY secret, which bills API usage.
 on:
   workflow_dispatch:
     inputs:
@@ -29,11 +31,12 @@ jobs:
     runs-on: ${{ inputs.os }}
     timeout-minutes: 60
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
       CLAUDE_CODE_VERSION: 2.1.332
     steps:
-      - name: Check the secret is set
-        run: test -n "$ANTHROPIC_API_KEY" || { echo "Set the ANTHROPIC_API_KEY repository secret first."; exit 1; }
+      - name: Check a login secret is set
+        run: test -n "$CLAUDE_CODE_OAUTH_TOKEN$ANTHROPIC_API_KEY" || { echo "Set the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY repository secret first."; exit 1; }
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
@@ -44,14 +47,16 @@ jobs:
       - name: Install Claude Code
         run: npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" && claude --version
       - name: Set up a Claude Code home for the runner
-        # Onboarding done, the key pre-approved (Claude Code keys approval on
-        # its last 20 characters), and tools allowed without prompts on this
-        # throwaway machine. A project ask rule still beats these allows.
+        # Onboarding done, an API key pre-approved (Claude Code keys approval
+        # on its last 20 characters; a token needs none), and tools allowed
+        # without prompts on this throwaway machine. A project ask rule still
+        # beats these allows.
         run: |
           mkdir -p ~/.claude
-          jq -n --arg k "${ANTHROPIC_API_KEY: -20}" --arg v "$CLAUDE_CODE_VERSION" \
+          k=""; [ -n "$ANTHROPIC_API_KEY" ] && k="${ANTHROPIC_API_KEY: -20}"
+          jq -n --arg k "$k" --arg v "$CLAUDE_CODE_VERSION" \
             '{hasCompletedOnboarding: true, lastOnboardingVersion: $v, theme: "dark",
-              customApiKeyResponses: {approved: [$k], rejected: []}}' > ~/.claude.json
+              customApiKeyResponses: {approved: ([$k] | map(select(. != ""))), rejected: []}}' > ~/.claude.json
           echo '{"permissions": {"allow": ["Bash", "Write", "Edit", "Read"]}}' > ~/.claude/settings.json
       - name: TestSelfControl in a short pane
         if: inputs.tests != 'scenarios'
