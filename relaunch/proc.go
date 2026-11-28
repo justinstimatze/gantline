@@ -1,22 +1,22 @@
 package relaunch
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
+
+	"github.com/justinstimatze/gantline/internal/proc"
 )
 
 // Session is what a relaunch needs from the running claude process.
 type Session struct {
 	PID  int
-	Argv []string // /proc/<pid>/cmdline
-	Dir  string   // /proc/<pid>/cwd
-	Env  []string // /proc/<pid>/environ: what its launcher set
+	Argv []string // its command line
+	Dir  string   // its working directory
+	Env  []string // the environment its launcher set
 	ID   string   // sessionId from ~/.claude/sessions/<pid>.json
 }
 
@@ -24,21 +24,24 @@ type Session struct {
 var ErrNoClaude = errors.New("relaunch: no claude process in the pane")
 
 // Find returns the claude process at or under the pane's own process
-// (a session manager may exec claude in the pane; a shell pane runs it as a child), read from
-// /proc.
+// (a session manager may exec claude in the pane; a shell pane runs it as a child).
 func Find(panePID int) (Session, error) {
-	pid, err := findClaude(panePID)
+	tree, err := proc.Snapshot()
+	if err != nil {
+		return Session{}, err
+	}
+	pid, err := findClaude(tree, panePID)
 	if err != nil {
 		return Session{}, err
 	}
 	s := Session{PID: pid}
-	if s.Argv, err = nulList(fmt.Sprintf("/proc/%d/cmdline", pid)); err != nil {
+	if s.Argv, err = proc.Argv(pid); err != nil {
 		return s, err
 	}
-	if s.Env, err = nulList(fmt.Sprintf("/proc/%d/environ", pid)); err != nil {
+	if s.Env, err = proc.Env(pid); err != nil {
 		return s, err
 	}
-	if s.Dir, err = os.Readlink(fmt.Sprintf("/proc/%d/cwd", pid)); err != nil {
+	if s.Dir, err = proc.Cwd(pid); err != nil {
 		return s, err
 	}
 	home, _ := os.UserHomeDir()
@@ -56,8 +59,8 @@ func Find(panePID int) (Session, error) {
 	return s, nil
 }
 
-func findClaude(pid int) (int, error) {
-	if comm(pid) == "claude" {
+func findClaude(tree proc.Tree, pid int) (int, error) {
+	if proc.Name(pid) == "claude" {
 		return pid, nil
 	}
 	var found []int
@@ -66,8 +69,8 @@ func findClaude(pid int) (int, error) {
 		if depth > 4 {
 			return
 		}
-		for _, c := range children(p) {
-			if comm(c) == "claude" {
+		for _, c := range tree[p] {
+			if proc.Name(c) == "claude" {
 				found = append(found, c)
 				continue
 			}
@@ -82,35 +85,4 @@ func findClaude(pid int) (int, error) {
 		return found[0], nil
 	}
 	return 0, fmt.Errorf("%w: %d claude processes under pid %d", ErrNoClaude, len(found), pid)
-}
-
-func comm(pid int) string {
-	b, _ := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
-	return strings.TrimSpace(string(b))
-}
-
-func children(pid int) []int {
-	tasks, _ := filepath.Glob(fmt.Sprintf("/proc/%d/task/*/children", pid))
-	var out []int
-	for _, t := range tasks {
-		b, _ := os.ReadFile(t)
-		for _, f := range strings.Fields(string(b)) {
-			if n, err := strconv.Atoi(f); err == nil {
-				out = append(out, n)
-			}
-		}
-	}
-	return out
-}
-
-func nulList(path string) ([]string, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	b = bytes.TrimRight(b, "\x00")
-	if len(b) == 0 {
-		return nil, nil
-	}
-	return strings.Split(string(b), "\x00"), nil
 }

@@ -8,11 +8,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/justinstimatze/gantline/internal/proc"
 	"github.com/justinstimatze/gantline/journal"
 	"github.com/justinstimatze/gantline/queue"
 	"github.com/justinstimatze/gantline/screen"
@@ -422,22 +424,19 @@ func (x *sess) writtenAfter(t *testing.T, name string, at time.Time) {
 // this test's binary dir whose environment names this tmux socket.
 func (x *sess) runnerPID(t *testing.T) int {
 	self := filepath.Join(x.bin, "gantline")
-	dirs, _ := filepath.Glob("/proc/[0-9]*")
-	for _, d := range dirs {
-		cmd, err := os.ReadFile(d + "/cmdline")
+	pids, _ := proc.Pids()
+	for _, pid := range pids {
+		args, err := proc.Argv(pid)
 		if err != nil {
 			continue
 		}
-		args := strings.Split(strings.TrimRight(string(cmd), "\x00"), "\x00")
 		if len(args) < 3 || args[0] != self || args[1] != "q" || args[2] != "--run" {
 			continue
 		}
-		env, _ := os.ReadFile(d + "/environ")
-		if !strings.Contains("\x00"+string(env)+"\x00", "\x00GANTLINE_TMUX_SOCKET="+x.s.Socket+"\x00") {
+		env, _ := proc.Env(pid)
+		if !slices.Contains(env, "GANTLINE_TMUX_SOCKET="+x.s.Socket) {
 			continue
 		}
-		var pid int
-		fmt.Sscanf(filepath.Base(d), "%d", &pid)
 		return pid
 	}
 	t.Fatal("no runner process found")

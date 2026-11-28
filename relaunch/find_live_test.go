@@ -7,7 +7,7 @@ import (
 )
 
 // TestFindLive reads a real pane's claude process when GANTLINE_LIVE_PID
-// names the pane's process; it only reads /proc.
+// names the pane's process. It only reads process information.
 func TestFindLive(t *testing.T) {
 	pid, _ := strconv.Atoi(os.Getenv("GANTLINE_LIVE_PID"))
 	if pid == 0 {

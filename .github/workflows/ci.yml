@@ -23,6 +23,18 @@ jobs:
       - run: go vet -tags realclaude ./e2e
       - run: go test -race -count=1 ./...
 
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.x'
+      # macOS ships bash 3.2; the fake Claude Code screen needs a current one.
+      - run: brew install tmux jq bash
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+
   vulncheck:
     runs-on: ubuntu-latest
     steps:

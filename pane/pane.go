@@ -2,11 +2,11 @@
 package pane
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/justinstimatze/gantline/internal/proc"
 	"github.com/justinstimatze/gantline/tmux"
 )
 
@@ -27,6 +27,10 @@ func List(s tmux.Server) ([]Pane, error) {
 	if err != nil {
 		return nil, err
 	}
+	tree, err := proc.Snapshot()
+	if err != nil {
+		return nil, err
+	}
 	var panes []Pane
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
 		f := strings.Fields(line)
@@ -37,11 +41,11 @@ func List(s tmux.Server) ([]Pane, error) {
 		if err != nil {
 			continue
 		}
-		cpid := findClaude(pid)
+		cpid := findClaude(tree, pid)
 		if cpid == 0 {
 			continue
 		}
-		cwd, _ := os.Readlink(fmt.Sprintf("/proc/%d/cwd", cpid))
+		cwd, _ := proc.Cwd(cpid)
 		panes = append(panes, Pane{ID: f[0], PanePID: pid, ClaudePID: cpid, Cwd: cwd})
 	}
 	return panes, nil
@@ -68,7 +72,7 @@ func ByCwd(s tmux.Server, cwd string) string {
 // findClaude walks the descendants of root breadth-first and returns the pid
 // of the first whose argv has a "claude" entry, or 0. It visits at most 200
 // processes.
-func findClaude(root int) int {
+func findClaude(tree proc.Tree, root int) int {
 	queue := []int{root}
 	seen := make(map[int]bool, 32)
 	for len(queue) > 0 && len(seen) < 200 {
@@ -81,34 +85,20 @@ func findClaude(root int) int {
 		if isClaude(cur) {
 			return cur
 		}
-		queue = append(queue, children(cur)...)
+		queue = append(queue, tree[cur]...)
 	}
 	return 0
 }
 
 func isClaude(pid int) bool {
-	cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+	argv, err := proc.Argv(pid)
 	if err != nil {
 		return false
 	}
-	for _, a := range strings.Split(string(cmdline), "\x00") {
+	for _, a := range argv {
 		if a == "claude" || strings.HasSuffix(a, "/claude") {
 			return true
 		}
 	}
 	return false
-}
-
-func children(pid int) []int {
-	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/task/%d/children", pid, pid))
-	if err != nil {
-		return nil
-	}
-	var out []int
-	for _, f := range strings.Fields(string(data)) {
-		if n, err := strconv.Atoi(f); err == nil {
-			out = append(out, n)
-		}
-	}
-	return out
 }
